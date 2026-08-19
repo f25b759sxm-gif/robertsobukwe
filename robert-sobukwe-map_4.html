@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>48 Hours in Robert Sobukwe: A Map of the Karoo Stopover</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  :root{
+    --karoo-sand:#e9ddc7;
+    --karoo-clay:#b56a41;
+    --karoo-rust:#a1502e;
+    --karoo-green:#5a6b4a;
+    --karoo-blue:#3d6a8a;
+    --karoo-gold:#c99b3c;
+    --karoo-ink:#2b2420;
+    --karoo-stone:#6f6357;
+    --paper:#f7f1e6;
+    --paper-2:#fbf7ee;
+    --line:#d8cbb2;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:"Georgia","Times New Roman",serif;
+    color:var(--karoo-ink);
+    background:var(--paper);
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    display:flex;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:390px;
+    min-width:390px;
+    height:100%;
+    overflow-y:auto;
+    background:linear-gradient(180deg,var(--paper-2),var(--paper));
+    border-right:1px solid var(--line);
+    box-shadow:2px 0 14px rgba(43,36,32,.06);
+    z-index:500;
+  }
+  .masthead{
+    padding:26px 24px 20px;
+    background:
+      radial-gradient(120% 80% at 100% 0%, rgba(201,155,60,.18), transparent 60%),
+      linear-gradient(160deg,#3b2f26,#5a4433);
+    color:#f4ead6;
+    border-bottom:3px solid var(--karoo-gold);
+  }
+  .kicker{
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    text-transform:uppercase;
+    letter-spacing:.22em;
+    font-size:11px;
+    color:var(--karoo-gold);
+    margin:0 0 10px;
+  }
+  .masthead h1{
+    font-size:25px;
+    line-height:1.2;
+    margin:0 0 8px;
+    font-weight:700;
+  }
+  .masthead .alt-name{
+    font-size:13.5px;
+    font-style:italic;
+    color:#d9c9ac;
+    margin:0 0 4px;
+  }
+  .byline{
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:11.5px;
+    letter-spacing:.04em;
+    color:#c7b28c;
+    margin:12px 0 0;
+  }
+
+  .intro{
+    padding:16px 24px 6px;
+    font-size:13.5px;
+    line-height:1.6;
+    color:var(--karoo-stone);
+    border-bottom:1px solid var(--line);
+  }
+
+  .filters{
+    padding:14px 20px 6px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    border-bottom:1px solid var(--line);
+  }
+  .filter{
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:11.5px;
+    letter-spacing:.02em;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:20px;
+    padding:6px 12px 6px 10px;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    user-select:none;
+    transition:all .15s ease;
+    color:var(--karoo-ink);
+  }
+  .filter .dot{
+    width:11px;height:11px;border-radius:50%;
+    box-shadow:0 0 0 2px rgba(255,255,255,.6) inset;
+  }
+  .filter.off{opacity:.4;filter:grayscale(.5);}
+  .filter:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(43,36,32,.12);}
+
+  .section-label{
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    text-transform:uppercase;
+    letter-spacing:.16em;
+    font-size:10.5px;
+    color:var(--karoo-stone);
+    padding:18px 24px 4px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .section-label::before{
+    content:"";width:14px;height:2px;background:var(--karoo-clay);display:inline-block;
+  }
+
+  .place{
+    display:flex;
+    gap:12px;
+    padding:11px 22px;
+    cursor:pointer;
+    border-left:3px solid transparent;
+    transition:background .15s ease,border-color .15s ease;
+  }
+  .place:hover{background:#efe6d4;border-left-color:var(--karoo-gold);}
+  .place.hidden{display:none;}
+  .pin{
+    width:26px;height:26px;min-width:26px;
+    border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg);
+    margin-top:3px;
+    box-shadow:0 2px 4px rgba(0,0,0,.2);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .pin span{transform:rotate(45deg);font-size:12px;line-height:1;}
+  .place .body h3{
+    margin:0 0 2px;
+    font-size:14.5px;
+    font-weight:700;
+    line-height:1.25;
+  }
+  .place .body p{
+    margin:0;
+    font-size:12px;
+    line-height:1.5;
+    color:var(--karoo-stone);
+  }
+
+  .footer{
+    padding:18px 24px 40px;
+    font-size:11px;
+    line-height:1.55;
+    color:#9a8d7c;
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    border-top:1px solid var(--line);
+    margin-top:10px;
+  }
+
+  /* ---------- Map ---------- */
+  .map-wrap{flex:1;position:relative;}
+  #map{position:absolute;inset:0;background:#dfd6c2;}
+
+  .map-legend{
+    position:absolute;
+    right:14px;bottom:22px;
+    z-index:600;
+    background:rgba(251,247,238,.94);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 14px;
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:11px;
+    color:var(--karoo-ink);
+    box-shadow:0 4px 14px rgba(43,36,32,.14);
+    max-width:210px;
+  }
+  .map-legend b{
+    display:block;font-size:10px;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--karoo-stone);margin-bottom:7px;
+  }
+  .map-legend .row{display:flex;align-items:center;gap:8px;margin:4px 0;}
+  .map-legend .dot{width:11px;height:11px;border-radius:50%;}
+
+  .leaflet-popup-content-wrapper{
+    border-radius:8px;
+    border-top:3px solid var(--karoo-gold);
+  }
+  .leaflet-popup-content{
+    font-family:"Georgia",serif;
+    margin:14px 16px;
+  }
+  .pop-cat{
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    text-transform:uppercase;letter-spacing:.12em;font-size:9.5px;
+    font-weight:700;margin-bottom:5px;
+  }
+  .pop-title{font-size:16px;font-weight:700;margin:0 0 6px;line-height:1.2;}
+  .pop-desc{font-size:12.5px;line-height:1.55;color:var(--karoo-stone);margin:0;}
+  .pop-link{
+    display:inline-block;margin-top:9px;
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    font-size:11px;font-weight:700;letter-spacing:.03em;
+    text-decoration:none;
+  }
+  .pop-link:hover{text-decoration:underline;}
+
+  /* mobile */
+  @media (max-width:820px){
+    .app{flex-direction:column;height:auto;}
+    .sidebar{width:100%;min-width:0;height:auto;max-height:none;order:2;border-right:none;}
+    .map-wrap{order:1;height:62vh;min-height:380px;}
+    #map{position:absolute;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="masthead">
+      <p class="kicker">In Transit</p>
+      <h1>48 hours in Robert Sobukwe</h1>
+      <p class="alt-name">What to do in South Africa's original stopover town.</p>
+      <p class="byline">Words &amp; map: Andrew Thompson</p>
+    </div>
+
+    <p class="intro">
+      Click a marker or a listing to fly there; use “See surrounds” (top-right) to pull
+      back and take in Camdeboo National Park and the Valley of Desolation.
+    </p>
+
+    <div class="filters" id="filters"></div>
+
+    <div id="list"></div>
+
+    <div class="footer">
+      Base map © OpenStreetMap contributors. Every pin is placed on its Google Maps location,
+      and each popup links back to it. Many maps and GPS apps still list the town as Graaff-Reinet.
+    </div>
+  </aside>
+
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-legend">
+      <b>Legend</b>
+      <div class="row"><span class="dot" style="background:#a1502e"></span>Historic centre</div>
+      <div class="row"><span class="dot" style="background:#5a6b4a"></span>Around town</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const CATS = {
+  town:    {label:"Historic centre", color:"#a1502e"},
+  land:    {label:"Around town", color:"#5a6b4a"}
+};
+
+// The eleven places to map, with coordinates taken from their Google Maps pins.
+const PLACES = [
+  // ---- Historic centre (walkable core) ----
+  {name:"Groot Kerk", cat:"town", icon:"✚", core:true, lat:-32.2495631, lng:24.5349024,
+   url:"https://www.google.com/maps/place/Nederduitse+Gereformeerde+Kerk+(Groot+Kerk)+@+Graaff-Reinet)/@-32.2495631,24.5323221,1072m",
+   desc:"The Nederduitse Gereformeerde Kerk, or Groot Kerk, stands at the top of Church Street. The article calls it a beacon for the religious and the agnostic alike."},
+  {name:"Coldstream (Graaff-Reinet Club)", cat:"town", icon:"◔", core:true, lat:-32.249581, lng:24.535858,
+   url:"https://www.google.com/maps/place/Coldstream+Restaurant+Graaff-Reinet/@-32.249581,24.5332777,1072m",
+   desc:"Part of the Graaff-Reinet Club, established in 1875. Its 1886 building is the oldest in South Africa designed specifically as a gentlemen's club. Have a beer under the Norfolk pine with the Dutch Reformed Church across the road, or a pint in the classic pub inside."},
+  {name:"Drostdy Hotel", cat:"town", icon:"⌂", core:true, lat:-32.2520342, lng:24.5357256,
+   url:"https://www.google.com/maps/place/Drostdy+Hotel+Graaff+Reinet/@-32.2520342,24.5331453,1071m",
+   desc:"On Church Street. Designed by Louis Thibault and built in 1804 as an official residence, it became a hotel in 1878. A refurbishment begun in 2012 restored it to a 48-room, five-star property, reopened in 2014 and owned by the SA College for Tourism. The Camdeboo Restaurant and De Camdeboo Wijnkamer are both here."},
+  {name:"De Camdeboo Wijnkamer", cat:"town", icon:"◇", core:true, lat:-32.2523652, lng:24.5358974,
+   url:"https://www.google.com/maps/place/De+Camdeboo+Wijnkamer/@-32.2523652,24.5333171,1071m",
+   desc:"At the Drostdy Hotel. Stocks the complete range of Rupert wines at cellar-door prices, along with other Cape labels also poured in the restaurant and the hotel bar."},
+  {name:"Karoo Origins: The Fossil Centre", cat:"town", icon:"◈", core:true, lat:-32.2518096, lng:24.5361075,
+   url:"https://www.google.com/maps/place/Karoo+Origins-The+Fossil+Centre/@-32.2518096,24.5335272,1071m",
+   desc:"A fossil centre that opened in April 2025 and brought the Rubidge Collection into town from Wellwood. More than 850 fossil skulls are on show, and every fossil in the collection is on display. The rock record here spans 120 million years."},
+  {name:"Hello You Restaurant and Wine Bar", cat:"town", icon:"❋", core:true, lat:-32.2514078, lng:24.5338919,
+   url:"https://www.google.com/maps/place/Hello+You+Restaurant+and+Wine+Bar/@-32.2498016,24.5359438,1072m",
+   desc:"A contemporary spot for a glass of wine and a small plate or two."},
+  {name:"Slater & Dutch", cat:"town", icon:"❦", core:true, lat:-32.2517095, lng:24.5338582,
+   url:"https://www.google.com/maps/place/Slater+%26+Dutch/@-32.2513012,24.5333397,689m",
+   desc:"A handmade leather workshop selling bags, belts, wallets and keepsakes, much of it cut and stitched in the shop while you watch. It grew out of a drought, when sixth-generation farmer MC van Rensburg turned a longstanding interest in leather into a business."},
+
+  // ---- Around town ----
+  {name:"Magazine Hill", cat:"land", icon:"◮", core:false, lat:-32.2449915, lng:24.5356578,
+   url:"https://www.google.com/maps/place/Magazine+Hill,+Graaff-Reinet/@-32.2449915,24.5330775,1072m",
+   desc:"The rise above town where Robert Scott's walking tour begins and the oasis geography snaps into focus, with the Sundays River looping the historic centre and Camdeboo National Park all around."},
+  {name:"SA College for Tourism", cat:"land", icon:"❖", core:false, lat:-32.2442706, lng:24.5332609,
+   url:"https://www.google.com/maps/place/SA+College+For+Tourism/@-32.2442706,24.5306806,1072m",
+   desc:"Established by Anton Rupert in 2001 on the hill above town. It owns the Drostdy Hotel and takes on 30 graduates each year for paid workplace experience."},
+  {name:"Camdeboo National Park", cat:"land", icon:"▲", core:false, lat:-32.2203946, lng:24.5412818,
+   url:"https://www.google.com/maps/place/Camdeboo+National+Park/@-32.2203946,24.5387015,1072m",
+   desc:"The national park that all but surrounds the town. It supports 51 recorded mammal species, including buffalo, kudu, springbok and Cape mountain zebra, and more than 220 bird species."},
+  {name:"Valley of Desolation", cat:"land", icon:"⛰", core:false, lat:-32.2666696, lng:24.4928847,
+   url:"https://www.google.com/maps/place/Valley+of+Desolation/@-32.2666696,24.4903044,1071m",
+   desc:"The park's main draw, about 14 km from town by road on the R63 towards Murraysburg. A scenic road climbs to viewpoints over its dolerite columns and the plains of the Great Karoo."}
+];
+
+// ---- Map setup ----
+const map = L.map('map', {zoomControl:true, scrollWheelZoom:true}).setView([-32.35, 24.4], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom:19,
+  attribution:'&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+function makeIcon(color, glyph){
+  return L.divIcon({
+    className:'',
+    html:`<div style="
+        width:30px;height:30px;border-radius:50% 50% 50% 0;
+        background:${color};transform:rotate(-45deg);
+        box-shadow:0 3px 6px rgba(0,0,0,.35);
+        border:2px solid rgba(255,255,255,.85);
+        display:flex;align-items:center;justify-content:center;">
+        <span style="transform:rotate(45deg);color:#fff;font-size:14px;line-height:1;font-family:Georgia,serif;">${glyph}</span>
+      </div>`,
+    iconSize:[30,30],
+    iconAnchor:[15,28],
+    popupAnchor:[3,-26]
+  });
+}
+
+const markers = {};
+const bounds = [];
+
+PLACES.forEach((p,i)=>{
+  const c = CATS[p.cat].color;
+  const m = L.marker([p.lat,p.lng], {icon:makeIcon(c,p.icon)}).addTo(map);
+  m.bindPopup(`
+    <div class="pop-cat" style="color:${c}">${CATS[p.cat].label}</div>
+    <h3 class="pop-title">${p.name}</h3>
+    <p class="pop-desc">${p.desc}</p>
+    ${p.url?`<a class="pop-link" href="${p.url}" target="_blank" rel="noopener" style="color:${c}">View on Google Maps &rsaquo;</a>`:''}
+  `);
+  markers[i] = m;
+  bounds.push([p.lat,p.lng]);
+});
+
+// Tight default crop on the walkable historic centre.
+// The "around town" markers stay on the map, reachable by panning out or clicking a listing.
+const coreBounds = PLACES.filter(p=>p.core).map(p=>[p.lat,p.lng]);
+map.fitBounds(coreBounds, {padding:[70,70], maxZoom:16});
+
+// Small control to pull back and see the whole set (centre + surrounds)
+const ViewToggle = L.Control.extend({
+  options:{position:'topright'},
+  onAdd:function(){
+    const b=L.DomUtil.create('button','');
+    b.textContent='See surrounds';
+    b.style.cssText='font:12px/1.2 "Helvetica Neue",Arial,sans-serif;padding:7px 11px;'
+      +'background:#fbf7ee;border:1px solid #d8cbb2;border-radius:6px;cursor:pointer;'
+      +'box-shadow:0 2px 6px rgba(43,36,32,.18);color:#2b2420;';
+    let wide=false;
+    L.DomEvent.on(b,'click',L.DomEvent.stop).on(b,'click',()=>{
+      wide=!wide;
+      if(wide){ map.fitBounds(bounds,{padding:[60,60]}); b.textContent='Back to centre'; }
+      else    { map.fitBounds(coreBounds,{padding:[70,70],maxZoom:16}); b.textContent='See surrounds'; }
+    });
+    return b;
+  }
+});
+map.addControl(new ViewToggle());
+
+// ---- Build filter chips ----
+const activeCats = new Set(Object.keys(CATS));
+const filtersEl = document.getElementById('filters');
+Object.entries(CATS).forEach(([key,cat])=>{
+  const chip = document.createElement('div');
+  chip.className='filter';
+  chip.dataset.cat=key;
+  chip.innerHTML=`<span class="dot" style="background:${cat.color}"></span>${cat.label}`;
+  chip.addEventListener('click',()=>{
+    if(activeCats.has(key)){activeCats.delete(key);chip.classList.add('off');}
+    else{activeCats.add(key);chip.classList.remove('off');}
+    applyFilter();
+  });
+  filtersEl.appendChild(chip);
+});
+
+// ---- Build list, grouped by category ----
+const listEl = document.getElementById('list');
+Object.entries(CATS).forEach(([key,cat])=>{
+  const label = document.createElement('div');
+  label.className='section-label';
+  label.textContent=cat.label;
+  label.dataset.sectionFor=key;
+  listEl.appendChild(label);
+
+  PLACES.forEach((p,i)=>{
+    if(p.cat!==key) return;
+    const row = document.createElement('div');
+    row.className='place';
+    row.dataset.cat=key;
+    row.dataset.idx=i;
+    row.innerHTML=`
+      <div class="pin" style="background:${cat.color}"><span>${p.icon}</span></div>
+      <div class="body"><h3>${p.name}</h3><p>${p.desc}</p></div>`;
+    row.addEventListener('click',()=>{
+      map.flyTo([p.lat,p.lng], p.core?17:14, {duration:1.1});
+      markers[i].openPopup();
+    });
+    listEl.appendChild(row);
+  });
+});
+
+function applyFilter(){
+  // markers
+  PLACES.forEach((p,i)=>{
+    if(activeCats.has(p.cat)){ if(!map.hasLayer(markers[i])) markers[i].addTo(map); }
+    else { if(map.hasLayer(markers[i])) map.removeLayer(markers[i]); }
+  });
+  // list rows
+  document.querySelectorAll('.place').forEach(row=>{
+    row.classList.toggle('hidden', !activeCats.has(row.dataset.cat));
+  });
+  // section labels
+  document.querySelectorAll('.section-label').forEach(l=>{
+    l.style.display = activeCats.has(l.dataset.sectionFor)?'flex':'none';
+  });
+}
+</script>
+</body>
+</html>
