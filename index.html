@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>48 Hours in Robert Sobukwe (Graaff-Reinet): A Map of the Karoo Stopover</title>
+<title>48 Hours in Robert Sobukwe: A Map of the Karoo Stopover</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <style>
   :root{
@@ -257,9 +257,9 @@
   <aside class="sidebar">
     <div class="masthead">
       <p class="kicker">In Transit</p>
-      <h1>48 hours in Robert Sobukwe (Graaff-Reinet)</h1>
+      <h1>48 hours in Robert Sobukwe</h1>
       <p class="alt-name">What to do in South Africa's original stopover town.</p>
-      <p class="byline">Words &amp; Map: Andrew Thompson</p>
+      <p class="byline">Words &amp; map: Andrew Thompson</p>
     </div>
 
     <p class="intro">
@@ -367,9 +367,8 @@ PLACES.forEach((p,i)=>{
   m.bindPopup(`
     <div class="pop-cat" style="color:${c}">${CATS[p.cat].label}</div>
     <h3 class="pop-title">${p.name}</h3>
-    <p class="pop-desc">${p.desc}</p>
     ${p.url?`<a class="pop-link" href="${p.url}" target="_blank" rel="noopener" style="color:${c}">View on Google Maps &rsaquo;</a>`:''}
-  `);
+  `, {autoPanPaddingTopLeft:[18,64], autoPanPaddingBottomRight:[18,18]});
   markers[i] = m;
   bounds.push([p.lat,p.lng]);
 });
@@ -447,8 +446,14 @@ Object.entries(CATS).forEach(([key,cat])=>{
       <div class="pin" style="background:${cat.color}"><span>${p.icon}</span></div>
       <div class="body"><h3>${p.name}</h3><p>${p.desc}</p></div>`;
     row.addEventListener('click',()=>{
-      map.flyTo([p.lat,p.lng], p.core?17:14, {duration:1.1});
-      markers[i].openPopup();
+      // Fly first, then open the popup once movement settles so it pans fully into view.
+      map.closePopup();
+      map.flyTo([p.lat,p.lng], p.core?17:14, {duration:1.0});
+      map.once('moveend', ()=>markers[i].openPopup());
+      // On narrow/stacked layouts, bring the map into view so the card is visible.
+      if(window.matchMedia('(max-width:820px)').matches){
+        document.querySelector('.map-wrap').scrollIntoView({behavior:'smooth', block:'start'});
+      }
     });
     listEl.appendChild(row);
   });
